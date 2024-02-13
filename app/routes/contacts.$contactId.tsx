@@ -1,26 +1,26 @@
-import type { ActionArgs, LoaderArgs } from "@remix-run/node";
+import type { ActionFunctionArgs, LoaderFunctionArgs } from "@remix-run/node";
 import { json } from "@remix-run/node";
 import { Form, useFetcher, useLoaderData } from "@remix-run/react";
 import invariant from "tiny-invariant";
 
 import type { ContactRecord } from "../data";
 import { getContact, updateContact } from "../data";
+import { purgeCache } from "@netlify/functions";
 
-export const action = async ({ params, request }: ActionArgs) => {
+export const action = async ({ params, request }: ActionFunctionArgs) => {
   invariant(params.contactId, "Missing contactId param");
   const formData = await request.formData();
   const contact = await updateContact(params.contactId, {
     favorite: formData.get("favorite") === "true",
   });
-  // const { purgeCache } = await import("@netlify/functions");
-
-  // purgeCache({
-  //   tags: ["contacts", `contact-${contact.id}`],
-  // })
+  // Purge the cache for contacts lists and this specific contact
+  purgeCache({
+    tags: ["contacts", `contact:${contact.id}`],
+  })
   return contact
 };
 
-export const loader = async ({ params }: LoaderArgs) => {
+export const loader = async ({ params }: LoaderFunctionArgs) => {
   invariant(params.contactId, "Missing contactId param");
   const contact = await getContact(params.contactId);
   if (!contact) {
@@ -28,10 +28,10 @@ export const loader = async ({ params }: LoaderArgs) => {
   }
   return json({ contact }, {
     headers: {
-      // Cache for a year in the CDN, but always revalidate in the browser
-      "Cache-Control": "public, max-age=0, s-maxage: 31536000",
-      // Revalidate whenever the products change
-      "Cache-Tag": "contacts",
+      "Cache-Control": "public, max-age=0, must-revalidate",
+      "Netlify-CDN-Cache-Control": "public, s-maxage=31536000",
+      // Revalidate whenever this contact changes
+      "Cache-Tag": `contact:${contact.id}`,
     },
   });
 };
