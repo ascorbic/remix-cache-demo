@@ -2,7 +2,6 @@
 // 🛑 Nothing in here has anything to do with Remix, it's just a fake database
 ////////////////////////////////////////////////////////////////////////////////
 
-// @ts-ignore - no types, but it's a tiny function
 import { getDeployStore } from "@netlify/blobs";
 import { matchSorter } from "match-sorter";
 import sortBy from "sort-by";
